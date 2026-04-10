@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompuCell3DProject Version="4.6.0">
+    <SimulationFile>Simulation/WagyuMarbling.xml</SimulationFile>
+    <PythonScript>Simulation/WagyuMarbling.py</PythonScript>
+</CompuCell3DProject>

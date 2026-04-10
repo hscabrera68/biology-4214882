@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompuCell3D>
+  <Potts>
+    <!-- Lattice size -->
+    <Dimensions x="220" y="220" z="1"/>
+    <!-- Number of Monte Carlo Steps -->
+    <Steps>8000</Steps>
+
+    <!-- Temperature controls membrane fluctuation -->
+    <Temperature>12.0</Temperature>
+
+    <!-- To speed up -->
+    <NeighborOrder>2</NeighborOrder>
+
+    <Boundary_x>Periodic</Boundary_x>
+    <Boundary_y>Periodic</Boundary_y>
+    <Boundary_z>NoFlux</Boundary_z>
+  </Potts>
+
+  <Plugin Name="CellType">
+    <CellType TypeId="0" TypeName="Medium"/>
+    <CellType TypeId="1" TypeName="MUSCLE"/>
+    <CellType TypeId="2" TypeName="FAT_PROGENITOR"/>
+    <CellType TypeId="3" TypeName="FAT"/>
+  </Plugin>
+
+  <!-- Track per-cell center of mass etc. -->
+  <Plugin Name="CenterOfMass"/>
+
+  <!-- Contact energies (J): lower = stickier -->
+  <Plugin Name="Contact">
+    <NeighborOrder>2</NeighborOrder>
+
+    <!-- Medium -->
+    <Energy Type1="Medium"          Type2="Medium">      0</Energy>
+    <Energy Type1="Medium"          Type2="MUSCLE">     20</Energy>
+    <Energy Type1="Medium"          Type2="FAT_PROGENITOR">18</Energy>
+    <Energy Type1="Medium"          Type2="FAT">        18</Energy>
+
+    <!-- Muscle interactions -->
+    <Energy Type1="MUSCLE"          Type2="MUSCLE">      8</Energy>
+    <Energy Type1="MUSCLE"          Type2="FAT_PROGENITOR">14</Energy>
+    <Energy Type1="MUSCLE"          Type2="FAT">        16</Energy>
+
+    <!-- Fat progenitors -->
+    <Energy Type1="FAT_PROGENITOR"  Type2="FAT_PROGENITOR">10</Energy>
+    <Energy Type1="FAT_PROGENITOR"  Type2="FAT">          9</Energy>
+
+    <!-- Mature fat: cohesive (marbling islands) -->
+    <Energy Type1="FAT"             Type2="FAT">          6</Energy>
+  </Plugin>
+
+  <!-- Volume constraints -->
+  <Plugin Name="Volume">
+    <VolumeEnergyParameters CellType="MUSCLE"         TargetVolume="55" LambdaVolume="2.0"/>
+    <VolumeEnergyParameters CellType="FAT_PROGENITOR" TargetVolume="35" LambdaVolume="2.0"/>
+    <VolumeEnergyParameters CellType="FAT"            TargetVolume="90" LambdaVolume="2.2"/>
+  </Plugin>
+
+  <!-- Surface constraints help shape stability -->
+  <Plugin Name="Surface">
+    <SurfaceEnergyParameters CellType="MUSCLE"         TargetSurface="120" LambdaSurface="0.1"/>
+    <SurfaceEnergyParameters CellType="FAT_PROGENITOR" TargetSurface="90"  LambdaSurface="0.1"/>
+    <SurfaceEnergyParameters CellType="FAT"            TargetSurface="170" LambdaSurface="0.12"/>
+  </Plugin>
+
+  <!-- Diffusion field = "NUTRIENT" representing vascular proximity -->
+  <Steppable Type="DiffusionSolverFE">
+    <DiffusionField>
+      <FieldName>NUTRIENT</FieldName>
+      <!-- Diffusion and decay -->
+      <DiffusionData>
+        <DiffusionConstant>0.20</DiffusionConstant>
+        <DecayConstant>0.002</DecayConstant>
+      </DiffusionData>
+
+      <!-- Secreted from boundary strips ("vessels") -->
+      <SecretionData>
+        <!-- We will seed vessel bands in Python as Medium pixels that secrete -->
+        <Secretion Type="Medium">0.00</Secretion>
+      </SecretionData>
+
+      <BoundaryConditions>
+        <!-- Add nutrient sources at left and right bands -->
+        <Plane axis="x" position="0">
+          <ConstantValue>1.0</ConstantValue>
+        </Plane>
+        <Plane axis="x" position="219">
+          <ConstantValue>1.0</ConstantValue>
+        </Plane>
+      </BoundaryConditions>
+    </DiffusionField>
+  </Steppable>
+
+  <!-- Chemotaxis: progenitors crawl up nutrient gradient -->
+  <Plugin Name="Chemotaxis">
+    <ChemicalField Source="DiffusionSolverFE" Name="NUTRIENT"/>
+    <ChemotaxisByType Type="FAT_PROGENITOR" ChemicalField="NUTRIENT" Lambda="35.0"/>
+    <!-- mature fat is less motile -->
+    <ChemotaxisByType Type="FAT" ChemicalField="NUTRIENT" Lambda="8.0"/>
+  </Plugin>
+
+</CompuCell3D>
